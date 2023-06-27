@@ -4,6 +4,14 @@ import 'hardhat-watcher';
 
 const config = {
   solidity: "0.8.18",
+  networks: {
+    sepolia: {
+      url: "https://eth-sepolia.g.alchemy.com/v2/demo",
+      accounts: {
+        mnemonic: "crowd panda trim jungle clinic barrel tilt room dirt apology cancel narrow",
+      },
+    },
+  },
   watcher: {
     test: {
       tasks: ['test'],

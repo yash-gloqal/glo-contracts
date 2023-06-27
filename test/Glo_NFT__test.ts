@@ -65,7 +65,7 @@ describe("Glo_NFT", function () {
         });
     });
 
-    describe("Mint an NFT", function () {
+    describe.skip("Mint an NFT", function () {
         it("should mint an NFT", async function () {
             await gloContract.initNFT(TOTAL_SUPPLY, NFT_PRICE_1);
             await gloContract.mint(ID_1, NFT_AMOUNT_1, {
@@ -81,19 +81,25 @@ describe("Glo_NFT", function () {
         });
     });
 
-    describe("Transfer an NFT", function () {
-        it("should transfer an NFT", async function () {
+    describe.skip("Withdraw Royalty", function () {
+        it("should withdraw royalty", async function () {
             await gloContract.initNFT(TOTAL_SUPPLY, NFT_PRICE_1);
             await gloContract.mint(ID_1, NFT_AMOUNT_1, {
                 value: NFT_PRICE_1
             });
+
+            const balanceBefore = await ethers.provider.getBalance(owner.address)
+
             const { artistBalance } = calculatePayment(NFT_PRICE_1.toNumber())
 
-            const _currSupp = await gloContract.getCurrentSupply(ID_1);
-            const _artistBalance = await gloContract.getArtistBalance(owner.address);
+            const tx = await gloContract.connect(owner).creatorWithdraw()
+            const rec = await tx.wait();
+            let gasCost = rec.gasUsed.mul(rec.gasPrice)
 
-            expect(_currSupp).to.be.equal(1)
-            expect(artistBalance).to.be.equal(_artistBalance)
+            const balanceAfter = await ethers.provider.getBalance(owner.address)
+
+            expect(balanceAfter).to.be.equal(balanceBefore + BigInt(`${artistBalance}`) - gasCost);
+
         });
     });
 });

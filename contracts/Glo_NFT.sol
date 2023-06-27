@@ -6,9 +6,11 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 contract Glo_NFT is
     Initializable,
+    ReentrancyGuardUpgradeable,
     ERC1155Upgradeable,
     ERC2981Upgradeable,
     OwnableUpgradeable,
@@ -33,6 +35,29 @@ contract Glo_NFT is
         require(
             (price * _amount) >= msg.value,
             "Not enough value attached to buy the NFT."
+        );
+        _;
+    }
+
+    modifier checkAlreadyInitialised(uint256 _id) {
+        require(nftCreator[_id] != address(0), "NFT not initialised.");
+        _;
+    }
+
+    modifier checkMaxSupply(uint256 _amount) {
+        require(_amount != 0, "Max Supply should be more than 0.");
+        _;
+    }
+
+    modifier checkInitPrice(uint256 _price) {
+        require(_price != 0, "Price should be more than 0.");
+        _;
+    }
+
+    modifier checkWithdrawBalance() {
+        require(
+            creatorRoyalty[msg.sender] > 0,
+            "Not enough balance to withdraw."
         );
         _;
     }
@@ -94,7 +119,10 @@ contract Glo_NFT is
         _setURI(newuri);
     }
 
-    function initNFT(uint256 _maxSupply, uint256 _price) public {
+    function initNFT(
+        uint256 _maxSupply,
+        uint256 _price
+    ) public checkMaxSupply(_maxSupply) checkInitPrice(_price) {
         ids++;
         nftCreator[ids] = msg.sender;
         nftPrice[ids] = _price;
@@ -104,7 +132,7 @@ contract Glo_NFT is
     function mint(
         uint256 _id,
         uint256 _amount
-    ) public payable checkNFTPrice(_id, _amount) {
+    ) public payable checkNFTPrice(_id, _amount) checkAlreadyInitialised(_id) {
         _mint(msg.sender, _id, _amount, "");
         currentSupply[_id] += _amount;
 
@@ -114,13 +142,12 @@ contract Glo_NFT is
         creatorRoyalty[creator] = artistPayment;
     }
 
-    function mintBatch(
-        address to,
-        uint256[] memory _ids,
-        uint256[] memory _amounts,
-        bytes memory data
-    ) public onlyOwner {
-        _mintBatch(to, _ids, _amounts, data);
+    function creatorWithdraw() public nonReentrant checkWithdrawBalance {
+        (bool success, ) = msg.sender.call{value: creatorRoyalty[msg.sender]}(
+            ""
+        );
+        require(success, "Transfer failed");
+        creatorRoyalty[msg.sender] = 0;
     }
 
     function royaltyInfo(
