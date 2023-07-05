@@ -67,8 +67,15 @@ describe("Glo_NFT", function () {
 
     describe.skip("Mint an NFT", function () {
         it("should mint an NFT", async function () {
-            await gloContract.initNFT(TOTAL_SUPPLY, NFT_PRICE_1);
-            await gloContract.mint(ID_1, NFT_AMOUNT_1, {
+            const timestamp = Date.now();
+            let messageHash = ethers.utils.solidityKeccak256(
+                ["address", "uint"],
+                [owner.address, timestamp]
+            );
+            let messageHashBinary = ethers.utils.arrayify(messageHash);
+            let signature = await owner.signMessage(messageHashBinary);
+
+            await gloContract.mint(ID_1, NFT_AMOUNT_1, TOKEN_URI, TOTAL_SUPPLY, NFT_PRICE_1, timestamp, signature, {
                 value: NFT_PRICE_1
             });
             const { artistBalance } = calculatePayment(NFT_PRICE_1.toNumber())
@@ -81,25 +88,45 @@ describe("Glo_NFT", function () {
         });
     });
 
-    describe.skip("Withdraw Royalty", function () {
-        it("should withdraw royalty", async function () {
-            await gloContract.initNFT(TOTAL_SUPPLY, NFT_PRICE_1);
-            await gloContract.mint(ID_1, NFT_AMOUNT_1, {
-                value: NFT_PRICE_1
-            });
+    // describe.skip("Withdraw Royalty", function () {
+    //     it("should withdraw royalty", async function () {
+    //         await gloContract.initNFT(TOTAL_SUPPLY, NFT_PRICE_1);
+    //         await gloContract.mint(ID_1, NFT_AMOUNT_1, {
+    //             value: NFT_PRICE_1
+    //         });
 
-            const balanceBefore = await ethers.provider.getBalance(owner.address)
+    //         const balanceBefore = await ethers.provider.getBalance(owner.address)
 
-            const { artistBalance } = calculatePayment(NFT_PRICE_1.toNumber())
+    //         const { artistBalance } = calculatePayment(NFT_PRICE_1.toNumber())
 
-            const tx = await gloContract.connect(owner).creatorWithdraw()
-            const rec = await tx.wait();
-            let gasCost = rec.gasUsed.mul(rec.gasPrice)
+    //         const tx = await gloContract.connect(owner).creatorWithdraw()
+    //         const rec = await tx.wait();
+    //         let gasCost = rec.gasUsed.mul(rec.gasPrice)
 
-            const balanceAfter = await ethers.provider.getBalance(owner.address)
+    //         const balanceAfter = await ethers.provider.getBalance(owner.address)
 
-            expect(balanceAfter).to.be.equal(balanceBefore + BigInt(`${artistBalance}`) - gasCost);
+    //         expect(balanceAfter).to.be.equal(balanceBefore + BigInt(`${artistBalance}`) - gasCost);
 
+    //     });
+    // });
+
+    describe("Signing Messages", function () {
+        it("should verify and sign messages", async function () {
+            const [adminWallet, userWallet] = await ethers.getSigners();
+            const timestamp = Date.now();
+
+            let messageHash = ethers.utils.solidityKeccak256(
+                ["address", "uint"],
+                [userWallet.address, timestamp]
+            );
+
+            let messageHashBinary = ethers.utils.arrayify(messageHash);
+
+            let signature = await adminWallet.signMessage(messageHashBinary);
+
+            const address = await gloContract.connect(userWallet).verifySignature(timestamp, signature);
+
+            expect(address).to.equal(owner.address)
         });
     });
 });

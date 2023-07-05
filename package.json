@@ -24,6 +24,7 @@
     "typescript": "^5.1.3"
   },
   "dependencies": {
+    "@openzeppelin/contracts": "^4.9.2",
     "@openzeppelin/contracts-upgradeable": "^4.9.2",
     "hardhat-watcher": "^2.5.0"
   }
